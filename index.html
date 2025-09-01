@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SJMSAA Football Rankings</title>
+    
+    <!-- Facebook Open Graph Meta Tags -->
+    <meta property="og:title" content="SJMSAA Football Rankings - Live Standings">
+    <meta property="og:description" content="Current standings for St. Johns Middle School Athletic Association Football - Middle School, Academy, and JV divisions.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://yourusername.github.io/sjmsaa-rankings">
+    <meta property="og:image" content="https://yourusername.github.io/sjmsaa-rankings/preview.png">
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="SJMSAA Football Rankings">
+    <meta name="twitter:description" content="Live football standings and rankings">
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .header {
+            text-align: center;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+        }
+        
+        .division {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .division h2 {
+            margin-top: 0;
+            padding: 1rem;
+            border-radius: 5px;
+            color: white;
+            text-align: center;
+        }
+        
+        .middle-school h2 { background-color: #1e3c72; }
+        .academy h2 { background-color: #c0392b; }
+        .jv h2 { background-color: #27ae60; }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+        
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 1rem;
+            border-radius: 5px;
+            margin: 1rem 0;
+        }
+        
+        .last-updated {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+            margin-top: 2rem;
+        }
+        
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .header h1 { font-size: 2rem; }
+            table { font-size: 0.9rem; }
+            th, td { padding: 8px 4px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>SJMSAA Football Rankings</h1>
+        <p>St. Johns Middle School Athletic Association</p>
+    </div>
+
+    <div id="loading" class="loading">
+        <h3>Loading current standings...</h3>
+    </div>
+
+    <div id="error" class="error" style="display: none;">
+        <h3>Error loading standings</h3>
+        <p id="error-message"></p>
+    </div>
+
+    <div id="standings-container">
+        <!-- Standings will be loaded here -->
+    </div>
+
+    <div class="last-updated">
+        <p id="last-updated">Last updated: <span id="update-time"></span></p>
+    </div>
+
+    <script>
+        // REPLACE THIS WITH YOUR ACTUAL APPS SCRIPT WEB APP URL
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwqfhw3v5Yecumn87mTBnnJBg_sXBD22Jxxas4wv1W723A0SboQv9PljbN7BJ4LYsUNxg/exec';
+
+        async function loadStandings() {
+            try {
+                const response = await fetch(`${APPS_SCRIPT_URL}?action=standings`);
+                const data = await response.json();
+
+                if (data.success) {
+                    displayStandings(data);
+                    document.getElementById('loading').style.display = 'none';
+                } else {
+                    showError('Failed to load standings: ' + data.error);
+                }
+            } catch (error) {
+                showError('Error connecting to data source: ' + error.message);
+            }
+        }
+
+        function displayStandings(data) {
+            const container = document.getElementById('standings-container');
+            container.innerHTML = '';
+
+            // Middle School Division
+            if (data.middleSchool && data.middleSchool.length > 0) {
+                container.appendChild(createDivisionTable('MIDDLE SCHOOL DIVISION', data.middleSchool, 'middle-school'));
+            }
+
+            // Academy Division
+            if (data.academy && data.academy.length > 0) {
+                container.appendChild(createDivisionTable('ACADEMY DIVISION', data.academy, 'academy'));
+            }
+
+            // JV Division
+            if (data.jv && data.jv.length > 0) {
+                container.appendChild(createDivisionTable('JUNIOR VARSITY DIVISION', data.jv, 'jv'));
+            }
+
+            // Update timestamp
+            document.getElementById('update-time').textContent = new Date().toLocaleString();
+        }
+
+        function createDivisionTable(title, teams, className) {
+            const divisionDiv = document.createElement('div');
+            divisionDiv.className = `division ${className}`;
+
+            const header = document.createElement('h2');
+            header.textContent = title;
+            divisionDiv.appendChild(header);
+
+            const table = document.createElement('table');
+            
+            // Table header
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            ['Rank', 'Team', 'Div W', 'Div L', 'Div %', 'Overall W', 'Overall L', 'Overall %', 'PF', 'PA', 'Streak'].forEach(text => {
+                const th = document.createElement('th');
+                th.textContent = text;
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+
+            // Table body
+            const tbody = document.createElement('tbody');
+            teams.forEach(team => {
+                const row = document.createElement('tr');
+                [
+                    team.rank,
+                    team.team,
+                    team.divWins,
+                    team.divLosses,
+                    team.divPct,
+                    team.overallWins,
+                    team.overallLosses,
+                    team.overallPct,
+                    team.pointsFor,
+                    team.pointsAgainst,
+                    team.streak
+                ].forEach(text => {
+                    const td = document.createElement('td');
+                    td.textContent = text;
+                    row.appendChild(td);
+                });
+                tbody.appendChild(row);
+            });
+            table.appendChild(tbody);
+            divisionDiv.appendChild(table);
+
+            return divisionDiv;
+        }
+
+        function showError(message) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error').style.display = 'block';
+            document.getElementById('error-message').textContent = message;
+        }
+
+        // Load standings when page loads
+        window.addEventListener('DOMContentLoaded', loadStandings);
+        
+        // Auto-refresh every 5 minutes
+        setInterval(loadStandings, 300000);
+    </script>
+</body>
+</html>
