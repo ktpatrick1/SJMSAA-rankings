@@ -155,86 +155,123 @@
         <div class="last-updated" id="lastUpdated"></div>
     </div>
 
-    <script>
-        // Replace YOUR_SHEET_ID with your actual Google Sheet ID
-        const SHEET_ID = '1nZiXZboIZknWFP0lw2bE08q_ZZ-nfOmtpwUEeU6tVoo';
+   <script>
+    // Replace YOUR_SHEET_ID with your actual Google Sheet ID
+    const SHEET_ID = '1nZiXZboIZknWFP0lw2bE08q_ZZ-nfOmtpwUEeU6tVoo';
+    
+    async function loadStandings() {
+        try {
+            const response = await fetch(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`);
+            const text = await response.text();
+            
+            // Parse Google Sheets JSON response
+            const json = JSON.parse(text.substr(47).slice(0, -2));
+            const rows = json.table.rows;
+            
+            if (rows.length === 0) {
+                throw new Error('No data found');
+            }
+            
+            displayStandings(rows);
+            
+        } catch (error) {
+            console.error('Error loading standings:', error);
+            document.getElementById('standings').innerHTML = `
+                <div class="error">
+                    <h3>Unable to load standings</h3>
+                    <p>Please check if the Google Sheet is publicly accessible.</p>
+                    <p>Error: ${error.message}</p>
+                </div>
+            `;
+        }
+    }
+    
+    function displayStandings(rows) {
+        let html = '';
+        let currentDivision = '';
         
-        async function loadStandings() {
-            try {
-                const response = await fetch(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`);
-                const text = await response.text();
+        rows.forEach((row, index) => {
+            const cells = row.c || [];
+            const firstCol = cells[0]?.v || '';
+            const secondCol = cells[1]?.v || '';
+            
+            // Check if this is a division header
+            if (typeof firstCol === 'string' && firstCol.includes('DIVISION')) {
+                currentDivision = firstCol;
+                html += `
+                    <h2 style="margin-top: 30px; margin-bottom: 15px; color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 10px;">
+                        ${currentDivision}
+                    </h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Team</th>
+                                <th>Wins</th>
+                                <th>Losses</th>
+                                <th>Ties</th>
+                                <th>Points For</th>
+                                <th>Points Against</th>
+                                <th>Streak</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                return;
+            }
+            
+            // Check if this is team data (starts with a number)
+            if (typeof firstCol === 'number' && secondCol && typeof secondCol === 'string') {
+                const rank = cells[0]?.v || '';
+                const team = cells[1]?.v || '';
+                const wins = cells[2]?.v || 0;
+                const losses = cells[3]?.v || 0;
+                const ties = cells[4]?.v || 0;
+                const pointsFor = cells[7]?.v || 0;
+                const pointsAgainst = cells[8]?.v || 0;
+                const streak = cells[10]?.v || '';
                 
-                // Parse Google Sheets JSON response
-                const json = JSON.parse(text.substr(47).slice(0, -2));
-                const rows = json.table.rows;
-                
-                if (rows.length === 0) {
-                    throw new Error('No data found');
-                }
-                
-                displayStandings(rows);
-                
-            } catch (error) {
-                console.error('Error loading standings:', error);
-                document.getElementById('standings').innerHTML = `
-                    <div class="error">
-                        <h3>Unable to load standings</h3>
-                        <p>Please check if the Google Sheet is publicly accessible.</p>
-                        <p>Error: ${error.message}</p>
-                    </div>
+                html += `
+                    <tr>
+                        <td class="rank">${rank}</td>
+                        <td class="team-name">${team}</td>
+                        <td class="wins">${wins}</td>
+                        <td class="losses">${losses}</td>
+                        <td class="ties">${ties}</td>
+                        <td>${pointsFor}</td>
+                        <td>${pointsAgainst}</td>
+                        <td>${streak}</td>
+                    </tr>
                 `;
             }
-        }
+            
+            // Check if we need to close a table (empty row after teams)
+            if (!firstCol && !secondCol && html.includes('<tbody>')) {
+                html += `
+                        </tbody>
+                    </table>
+                `;
+            }
+        });
         
-        function displayStandings(rows) {
-            let html = `
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Rank</th>
-                            <th>Team</th>
-                            <th>Wins</th>
-                            <th>Losses</th>
-                            <th>Ties</th>
-                            <th>Win %</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-            `;
-            
-            rows.forEach((row, index) => {
-                const cells = row.c || [];
-                const team = cells[0]?.v || '';
-                const wins = cells[1]?.v || 0;
-                const losses = cells[2]?.v || 0;
-                const ties = cells[3]?.v || 0;
-                
-                const totalGames = wins + losses + ties;
-                const winPct = totalGames > 0 ? ((wins + ties * 0.5) / totalGames * 100).toFixed(1) : '0.0';
-                
-                if (team) {  // Only show rows with team names
-                    html += `
-                        <tr>
-                            <td class="rank">${index + 1}</td>
-                            <td class="team-name">${team}</td>
-                            <td class="wins">${wins}</td>
-                            <td class="losses">${losses}</td>
-                            <td class="ties">${ties}</td>
-                            <td>${winPct}%</td>
-                        </tr>
-                    `;
-                }
-            });
-            
+        // Close any open table
+        if (html.includes('<tbody>') && !html.includes('</table>')) {
             html += `
                     </tbody>
                 </table>
             `;
-            
-            document.getElementById('standings').innerHTML = html;
-            document.getElementById('lastUpdated').innerHTML = `Last updated: ${new Date().toLocaleString()}`;
         }
         
+        document.getElementById('standings').innerHTML = html;
+        document.getElementById('lastUpdated').innerHTML = `Last updated: ${new Date().toLocaleString()}`;
+    }
+    
+    // Load standings when page loads
+    loadStandings();
+    
+    // Refresh every 5 minutes
+    setInterval(loadStandings, 5 * 60 * 1000);
+</script>
         // Load standings when page loads
         loadStandings();
         
