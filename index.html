@@ -172,30 +172,7 @@
                 throw new Error('No data found');
             }
             
-            // DEBUG: Show us what we're getting
-            let debugInfo = '<h3>Debug Info:</h3>';
-            debugInfo += `<p>Total rows found: ${rows.length}</p>`;
-            
-            // Show first 20 rows to see structure
-            debugInfo += '<table border="1"><tr><th>Row</th><th>First Cell</th><th>Second Cell</th><th>All Data</th></tr>';
-            
-            rows.slice(0, 20).forEach((row, index) => {
-                const cells = row.c || [];
-                const firstCol = cells[0]?.v || 'EMPTY';
-                const secondCol = cells[1]?.v || 'EMPTY';
-                const allCells = cells.map(cell => cell?.v || 'EMPTY').join(' | ');
-                
-                debugInfo += `<tr>
-                    <td>${index}</td>
-                    <td>${firstCol} (${typeof firstCol})</td>
-                    <td>${secondCol} (${typeof secondCol})</td>
-                    <td style="font-size: 10px;">${allCells}</td>
-                </tr>`;
-            });
-            
-            debugInfo += '</table>';
-            
-            document.getElementById('standings').innerHTML = debugInfo;
+            displayStandings(rows);
             
         } catch (error) {
             console.error('Error loading standings:', error);
@@ -208,8 +185,100 @@
         }
     }
     
+    function displayStandings(rows) {
+        // Define divisions based on row ranges (from your debug data)
+        const divisions = [
+            { name: 'MIDDLE SCHOOL DIVISION', startRow: 0, endRow: 5 },
+            { name: 'ACADEMY DIVISION', startRow: 6, endRow: 15 },
+            { name: 'JUNIOR VARSITY DIVISION', startRow: 16, endRow: 26 }
+        ];
+        
+        let html = '';
+        
+        divisions.forEach(division => {
+            const divisionTeams = [];
+            
+            // Extract teams for this division
+            for (let i = division.startRow; i <= division.endRow && i < rows.length; i++) {
+                const row = rows[i];
+                const cells = row.c || [];
+                
+                const rank = cells[0]?.v || '';
+                const team = cells[1]?.v || '';
+                const wins1 = cells[2]?.v || 0;  // Column C
+                const losses1 = cells[3]?.v || 0; // Column D
+                const wins2 = cells[5]?.v || 0;   // Column F
+                const losses2 = cells[6]?.v || 0; // Column G
+                const pointsFor = cells[8]?.v || 0; // Column I
+                const pointsAgainst = cells[9]?.v || 0; // Column J
+                const differential = cells[10]?.v || ''; // Column K
+                const streak = cells[11]?.v || ''; // Column L
+                
+                // Calculate total wins and losses (seems like there might be two different win/loss columns)
+                const totalWins = Math.max(wins1, wins2);
+                const totalLosses = Math.max(losses1, losses2);
+                
+                if (team) {
+                    divisionTeams.push({
+                        rank, team, wins: totalWins, losses: totalLosses, 
+                        pointsFor, pointsAgainst, differential, streak
+                    });
+                }
+            }
+            
+            // Only create a table if we have teams
+            if (divisionTeams.length > 0) {
+                html += `
+                    <h2 style="margin-top: 30px; margin-bottom: 15px; color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 10px;">
+                        ${division.name}
+                    </h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Team</th>
+                                <th>Wins</th>
+                                <th>Losses</th>
+                                <th>PF</th>
+                                <th>PA</th>
+                                <th>Diff</th>
+                                <th>Streak</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                divisionTeams.forEach(team => {
+                    html += `
+                        <tr>
+                            <td class="rank">${team.rank}</td>
+                            <td class="team-name">${team.team}</td>
+                            <td class="wins">${team.wins}</td>
+                            <td class="losses">${team.losses}</td>
+                            <td>${team.pointsFor}</td>
+                            <td>${team.pointsAgainst}</td>
+                            <td>${team.differential}</td>
+                            <td>${team.streak}</td>
+                        </tr>
+                    `;
+                });
+                
+                html += `
+                        </tbody>
+                    </table>
+                `;
+            }
+        });
+        
+        document.getElementById('standings').innerHTML = html;
+        document.getElementById('lastUpdated').innerHTML = `Last updated: ${new Date().toLocaleString()}`;
+    }
+    
     // Load standings when page loads
     loadStandings();
+    
+    // Refresh every 5 minutes
+    setInterval(loadStandings, 5 * 60 * 1000);
 </script>
 
 </body>
