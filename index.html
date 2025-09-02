@@ -186,7 +186,7 @@
     }
     
     function displayStandings(rows) {
-        // Define divisions based on row ranges
+        // Define divisions based on row ranges (from your debug data)
         const divisions = [
             { name: 'MIDDLE SCHOOL DIVISION', startRow: 0, endRow: 5 },
             { name: 'ACADEMY DIVISION', startRow: 6, endRow: 15 },
@@ -203,74 +203,28 @@
                 const row = rows[i];
                 const cells = row.c || [];
                 
+                const rank = cells[0]?.v || '';
                 const team = cells[1]?.v || '';
-                const wins1 = cells[2]?.v || 0;
-                const losses1 = cells[3]?.v || 0;
-                const wins2 = cells[5]?.v || 0;
-                const losses2 = cells[6]?.v || 0;
-                const pointsFor = cells[8]?.v || 0;
-                const pointsAgainst = cells[9]?.v || 0;
-                const differential = cells[10]?.v || '';
-                const streak = cells[11]?.v || '';
+                const wins1 = cells[2]?.v || 0;  // Column C
+                const losses1 = cells[3]?.v || 0; // Column D
+                const wins2 = cells[5]?.v || 0;   // Column F
+                const losses2 = cells[6]?.v || 0; // Column G
+                const pointsFor = cells[8]?.v || 0; // Column I
+                const pointsAgainst = cells[9]?.v || 0; // Column J
+                const differential = cells[10]?.v || ''; // Column K
+                const streak = cells[11]?.v || ''; // Column L
                 
                 // Calculate total wins and losses
                 const totalWins = Math.max(wins1, wins2);
                 const totalLosses = Math.max(losses1, losses2);
-                const totalGames = totalWins + totalLosses;
-                
-                // Calculate win percentage
-                const winPercentage = totalGames > 0 ? (totalWins / totalGames) : 0;
-                
-                // Determine if this is intra-division or inter-division
-                // (You may need to adjust this logic based on how you track division vs non-division games)
-                const intraDivisionWins = wins1; // Assuming column C is intra-division
-                const intraDivisionLosses = losses1; // Assuming column D is intra-division
-                const intraDivisionGames = intraDivisionWins + intraDivisionLosses;
-                const intraDivisionWinPct = intraDivisionGames > 0 ? (intraDivisionWins / intraDivisionGames) : 0;
                 
                 if (team) {
                     divisionTeams.push({
-                        team,
-                        wins: totalWins,
-                        losses: totalLosses,
-                        totalGames,
-                        winPercentage,
-                        intraDivisionWinPct,
-                        pointsFor,
-                        pointsAgainst,
-                        differential,
-                        streak
+                        rank, team, wins: totalWins, losses: totalLosses, 
+                        pointsFor, pointsAgainst, differential, streak
                     });
                 }
             }
-            
-            // Sort teams according to your criteria
-            divisionTeams.sort((a, b) => {
-                // Teams with no games played go to the bottom
-                if (a.totalGames === 0 && b.totalGames > 0) return 1;
-                if (b.totalGames === 0 && a.totalGames > 0) return -1;
-                if (a.totalGames === 0 && b.totalGames === 0) return 0;
-                
-                // 1. Intra-division win percentage (higher is better)
-                if (a.intraDivisionWinPct !== b.intraDivisionWinPct) {
-                    return b.intraDivisionWinPct - a.intraDivisionWinPct;
-                }
-                
-                // 2. Points against (lower is better)
-                if (a.pointsAgainst !== b.pointsAgainst) {
-                    return a.pointsAgainst - b.pointsAgainst;
-                }
-                
-                // 3. Inter-division win percentage (overall win pct - intra-division win pct)
-                const aInterDivisionWinPct = a.winPercentage - a.intraDivisionWinPct;
-                const bInterDivisionWinPct = b.winPercentage - b.intraDivisionWinPct;
-                if (aInterDivisionWinPct !== bInterDivisionWinPct) {
-                    return bInterDivisionWinPct - aInterDivisionWinPct;
-                }
-                
-                // 4. Points against again (tiebreaker)
-                return a.pointsAgainst - b.pointsAgainst;
-            });
             
             // Only create a table if we have teams
             if (divisionTeams.length > 0) {
@@ -285,7 +239,6 @@
                                 <th>Team</th>
                                 <th>Wins</th>
                                 <th>Losses</th>
-                                <th>Win %</th>
                                 <th>PF</th>
                                 <th>PA</th>
                                 <th>Diff</th>
@@ -295,16 +248,13 @@
                         <tbody>
                 `;
                 
-                divisionTeams.forEach((team, index) => {
-                    const winPctDisplay = team.totalGames > 0 ? (team.winPercentage * 100).toFixed(1) + '%' : '0.0%';
-                    
+                divisionTeams.forEach(team => {
                     html += `
                         <tr>
-                            <td class="rank">${index + 1}</td>
+                            <td class="rank">${team.rank}</td>
                             <td class="team-name">${team.team}</td>
                             <td class="wins">${team.wins}</td>
                             <td class="losses">${team.losses}</td>
-                            <td>${winPctDisplay}</td>
                             <td>${team.pointsFor}</td>
                             <td>${team.pointsAgainst}</td>
                             <td>${team.differential}</td>
