@@ -155,9 +155,18 @@
         <div class="last-updated" id="lastUpdated"></div>
     </div>
 
-   <script>
+  Great! The data is loading correctly now, but the formatting is broken - it's showing as one long line instead of proper tables. The issue is that the division headers aren't being detected properly.
+
+Let me fix the code to handle your sheet structure better:
+
+## **Updated JavaScript Code**
+
+**Go back to edit your `index.html` file and replace the `<script>` section with this corrected version:**
+
+```javascript
+<script>
     // Replace YOUR_SHEET_ID with your actual Google Sheet ID
-    const SHEET_ID = '1nZiXZboIZknWFP0lw2bE08q_ZZ-nfOmtpwUEeU6tVoo';
+    const SHEET_ID = 'YOUR_SHEET_ID_HERE';
     
     async function loadStandings() {
         try {
@@ -188,8 +197,19 @@
     
     function displayStandings(rows) {
         let html = '';
+        let inTable = false;
         let currentDivision = '';
         
+        // Define the divisions we're looking for
+        const divisions = [
+            { name: 'MIDDLE SCHOOL DIVISION', teams: [] },
+            { name: 'ACADEMY DIVISION', teams: [] },
+            { name: 'JUNIOR VARSITY DIVISION', teams: [] }
+        ];
+        
+        let currentDivisionIndex = -1;
+        
+        // Parse all data first
         rows.forEach((row, index) => {
             const cells = row.c || [];
             const firstCol = cells[0]?.v || '';
@@ -197,10 +217,34 @@
             
             // Check if this is a division header
             if (typeof firstCol === 'string' && firstCol.includes('DIVISION')) {
-                currentDivision = firstCol;
+                currentDivisionIndex = divisions.findIndex(div => div.name === firstCol);
+                return;
+            }
+            
+            // Check if this is team data (starts with a number and has a team name)
+            if (typeof firstCol === 'number' && secondCol && typeof secondCol === 'string' && currentDivisionIndex >= 0) {
+                const rank = cells[0]?.v || '';
+                const team = cells[1]?.v || '';
+                const wins = cells[2]?.v || 0;
+                const losses = cells[3]?.v || 0;
+                const ties = cells[4]?.v || 0;
+                const pointsFor = cells[7]?.v || 0;
+                const pointsAgainst = cells[8]?.v || 0;
+                const differential = cells[9]?.v || '';
+                const streak = cells[10]?.v || '';
+                
+                divisions[currentDivisionIndex].teams.push({
+                    rank, team, wins, losses, ties, pointsFor, pointsAgainst, differential, streak
+                });
+            }
+        });
+        
+        // Now build the HTML
+        divisions.forEach(division => {
+            if (division.teams.length > 0) {
                 html += `
                     <h2 style="margin-top: 30px; margin-bottom: 15px; color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 10px;">
-                        ${currentDivision}
+                        ${division.name}
                     </h2>
                     <table>
                         <thead>
@@ -210,57 +254,37 @@
                                 <th>Wins</th>
                                 <th>Losses</th>
                                 <th>Ties</th>
-                                <th>Points For</th>
-                                <th>Points Against</th>
+                                <th>PF</th>
+                                <th>PA</th>
+                                <th>Diff</th>
                                 <th>Streak</th>
                             </tr>
                         </thead>
                         <tbody>
                 `;
-                return;
-            }
-            
-            // Check if this is team data (starts with a number)
-            if (typeof firstCol === 'number' && secondCol && typeof secondCol === 'string') {
-                const rank = cells[0]?.v || '';
-                const team = cells[1]?.v || '';
-                const wins = cells[2]?.v || 0;
-                const losses = cells[3]?.v || 0;
-                const ties = cells[4]?.v || 0;
-                const pointsFor = cells[7]?.v || 0;
-                const pointsAgainst = cells[8]?.v || 0;
-                const streak = cells[10]?.v || '';
                 
-                html += `
-                    <tr>
-                        <td class="rank">${rank}</td>
-                        <td class="team-name">${team}</td>
-                        <td class="wins">${wins}</td>
-                        <td class="losses">${losses}</td>
-                        <td class="ties">${ties}</td>
-                        <td>${pointsFor}</td>
-                        <td>${pointsAgainst}</td>
-                        <td>${streak}</td>
-                    </tr>
-                `;
-            }
-            
-            // Check if we need to close a table (empty row after teams)
-            if (!firstCol && !secondCol && html.includes('<tbody>')) {
+                division.teams.forEach(team => {
+                    html += `
+                        <tr>
+                            <td class="rank">${team.rank}</td>
+                            <td class="team-name">${team.team}</td>
+                            <td class="wins">${team.wins}</td>
+                            <td class="losses">${team.losses}</td>
+                            <td class="ties">${team.ties}</td>
+                            <td>${team.pointsFor}</td>
+                            <td>${team.pointsAgainst}</td>
+                            <td>${team.differential}</td>
+                            <td>${team.streak}</td>
+                        </tr>
+                    `;
+                });
+                
                 html += `
                         </tbody>
                     </table>
                 `;
             }
         });
-        
-        // Close any open table
-        if (html.includes('<tbody>') && !html.includes('</table>')) {
-            html += `
-                    </tbody>
-                </table>
-            `;
-        }
         
         document.getElementById('standings').innerHTML = html;
         document.getElementById('lastUpdated').innerHTML = `Last updated: ${new Date().toLocaleString()}`;
@@ -272,6 +296,6 @@
     // Refresh every 5 minutes
     setInterval(loadStandings, 5 * 60 * 1000);
 </script>
-     
+
 </body>
 </html>
